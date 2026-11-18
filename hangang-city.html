@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
 <title>한강시 Hangang City — 오리지널 오픈월드</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#0b1020;font-family:system-ui,'Noto Sans KR',sans-serif}
@@ -12,7 +13,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b1020;font-family:sy
 #wanted{font-size:15px;letter-spacing:2px}
 #mission{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:8px 14px;border-radius:10px;font-size:14px;text-align:center}
 #speed{position:absolute;right:16px;bottom:16px;background:rgba(0,0,0,.6);padding:10px 16px;border-radius:12px;font-size:22px;font-weight:700}
-#keys{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.55);padding:8px 10px;border-radius:10px;font-size:12px;line-height:1.7;max-width:330px}
+#keys{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.55);padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.7;max-width:300px}
 #minimap{position:absolute;right:12px;top:12px;border-radius:10px;border:1px solid #444;background:#0a0f1c}
 #msg{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(20,30,60,.85);padding:8px 16px;border-radius:10px;font-size:15px;display:none}
 b.k{background:#223;border:1px solid #667;border-radius:4px;padding:0 5px}
@@ -26,7 +27,7 @@ b.k{background:#223;border:1px solid #667;border-radius:4px;padding:0 5px}
 <div id="top"><div id="wanted">수배 ☆☆☆</div><div id="stat">도보 | 낮</div><div id="fps">60 fps</div></div>
 <div id="mission">근처 마커에서 <b class="k">E</b> 미션 시작 (1배달 2추격 3레이스 중 가까운 것)</div>
 <div id="speed">0 km/h</div>
-<div id="keys"><b>한강시</b> 조작: <b class="k">WASD</b> 이동/운전 <b class="k">Shift</b> 달리기 <b class="k">Space</b> 점프/드리프트 <b class="k">F</b> 승하차 <b class="k">E</b> 미션 <b class="k">R</b> 리셋, 마우스 드래그 시점<br>요약5줄: ①WASD+Shift+Space,F,E,R,드래그시점 ②절차도시+Box차량/보행자+Canvas한글네온 ③차량가속/드리프트,AI신호정지,순찰추적/수배1-3 ④배달/따돌리기/체크포인트+미니맵/속도계/180초昼노을밤 ⑤창문·가로등Instanced+거리컬링,폭력없음</div>
+<div id="keys"><b class="k">WASD</b>이동 <b class="k">Shift</b>달리기 <b class="k">Space</b>점프 <b class="k">F</b>승하차 <b class="k">E</b>미션 <b class="k">R</b>리셋<br>마우스 드래그: 시점 회전</div>
 <div id="msg"></div>
 </div>
 <script type="module">
@@ -38,18 +39,18 @@ renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(device
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x87b5e0); scene.fog=new THREE.Fog(0x87b5e0,120,520);
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,1200);
 const sun=new THREE.DirectionalLight(0xffffff,1.6); sun.position.set(80,120,40); scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xbdd7ff,0x334455,.8));
+scene.add(new THREE.HemisphereLight(0xbdd7ff,0x8a9a86,.8));
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 // --- 텍스처(한글 네온) ---
 function textTex(txt,fg='#ff66ff',bg='#101020'){const c=document.createElement('canvas');c.width=256;c.height=96;const g=c.getContext('2d');g.fillStyle=bg;g.fillRect(0,0,256,96);g.strokeStyle=fg;g.lineWidth=6;g.strokeRect(4,4,248,88);g.fillStyle=fg;g.font='bold 44px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(txt,128,52);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
 // --- 지형: 땅/강/다리/도로 ---
 const colliders=[]; // {x0,x1,z0,z1}
 const solid=(m,x0,x1,z0,z1)=>{colliders.push({x0,x1,z0,z1});return m;};
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshLambertMaterial({color:0x3d4a3d}));
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshLambertMaterial({color:0x6fae6f}));
 ground.rotation.x=-Math.PI/2; scene.add(ground);
 const river=new THREE.Mesh(new THREE.PlaneGeometry(36,600),new THREE.MeshLambertMaterial({color:0x2a6fa8}));
 river.rotation.x=-Math.PI/2; river.position.y=.05; scene.add(river);
-const roadMat=new THREE.MeshLambertMaterial({color:0x2b2f36});
+const roadMat=new THREE.MeshLambertMaterial({color:0x4b5158});
 function road(w,d,x,z){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),roadMat);m.rotation.x=-Math.PI/2;m.position.set(x,.08,z);scene.add(m);}
 for(let i=-2;i<=2;i++){ if(i===0) continue; road(10,560,i*60,0);} // 남북 도로 (강 제외)
 for(let j=-2;j<=2;j++){ road(560,10,0,j*60);} // 동서 도로
@@ -74,9 +75,13 @@ function building(x,z,w,h,d,color,neon){const m=new THREE.Mesh(new THREE.BoxGeom
  if(neon){const t=new THREE.Mesh(new THREE.PlaneGeometry(12,4.5),new THREE.MeshBasicMaterial({map:textTex(neon.txt,neon.c),transparent:false}));
   t.position.set(x,h*.7,z+d/2+.4); buildings.add(t); neonSigns.push(t);}}
 for(let i=0;i<28;i++){const gx=-150+ (i%7)*30+rnd()*10, gz=-150+((i/7)|0)*70+rnd()*14; // 서쪽 업무지구
- building(gx,gz,14+rnd()*8,30+rnd()*45,14+rnd()*8,new THREE.Color().setHSL(.58,.25,.3+rnd()*.25),i%4==0?{txt:['한강마트','PC방 네온','분식 한강','노래방 별'][i%4],c:['#7CFC00','#ff66ff','#ffd23f','#66e0ff'][i%4]}:null);}
+  const bw=14+rnd()*8,bd=14+rnd()*8,bh=30+rnd()*45;
+  if([-120,-60,60,120].some(v=>Math.abs(gx-v)<bw/2+8)||[-120,-60,60,120].some(v=>Math.abs(gz-v)<bd/2+8))continue; // 도로는 비워둠
+  building(gx,gz,bw,bh,bd,new THREE.Color().setHSL(.58,.25,.3+rnd()*.25),i%4==0?{txt:['한강마트','PC방 네온','분식 한강','노래방 별'][i%4],c:['#7CFC00','#ff66ff','#ffd23f','#66e0ff'][i%4]}:null);}
 for(let i=0;i<44;i++){const gx=40+(i%11)*22+rnd()*6, gz=-150+((i/11)|0)*60+rnd()*16; if(Math.abs(gx-110)<12) continue; // 동쪽 주택가(고가 제외)
- building(gx,gz,8+rnd()*4,6+rnd()*7,8+rnd()*4,new THREE.Color().setHSL(.08+rnd()*.08,.3,.4+rnd()*.2),i%6==0?{txt:'편의점 24',c:'#7CFC00'}:null);}
+  const bw2=8+rnd()*4,bd2=8+rnd()*4,bh2=6+rnd()*7;
+  if([60,120].some(v=>Math.abs(gx-v)<bw2/2+8)||[-120,-60,60,120].some(v=>Math.abs(gz-v)<bd2/2+8))continue; // 도로는 비워둠
+ building(gx,gz,bw2,bh2,bd2,new THREE.Color().setHSL(.08+rnd()*.08,.3,.4+rnd()*.2),i%6==0?{txt:'편의점 24',c:'#7CFC00'}:null);}
 // 편의점(독립 건물+간판)
 const mart=new THREE.Mesh(new THREE.BoxGeometry(16,6,12),new THREE.MeshLambertMaterial({color:0xe8e8e8}));
 mart.position.set(45,3,-45); scene.add(mart); solid(mart,37,53,-51,-39);
@@ -105,9 +110,9 @@ function boxCar(color){const g=new THREE.Group();
 const playerMesh=new THREE.Group();
 const pBody=new THREE.Mesh(new THREE.BoxGeometry(.9,1.7,.5),new THREE.MeshLambertMaterial({color:0xffcc66}));pBody.position.y=1.1;playerMesh.add(pBody);
 const pHead=new THREE.Mesh(new THREE.BoxGeometry(.55,.55,.55),new THREE.MeshLambertMaterial({color:0xf2c9a0}));pHead.position.y=2.25;playerMesh.add(pHead);
-playerMesh.position.set(45,0,-30); scene.add(playerMesh);
-const myCar=boxCar(0x38bdf8); myCar.position.set(45,0,-20); myCar.visible=true;
-const parked=[myCar]; const parkSpots=[[45,-20],[-40,20],[-40,-80],[70,40],[70,-100]];
+playerMesh.position.set(60,0,60); scene.add(playerMesh);
+const myCar=boxCar(0x38bdf8); myCar.position.set(60,0,52); myCar.visible=true;
+const parked=[myCar]; const parkSpots=[[60,52],[-40,20],[-40,-80],[70,40],[70,-100]];
 for(let i=1;i<5;i++){const c=boxCar([0xf87171,0xa3e635,0xfbbf24,0xc084fc][i-1]);c.position.set(parkSpots[i][0],0,parkSpots[i][1]);c.rotation.y=(rnd()*4|0)*Math.PI/2;parked.push(c);}
 // AI 차량(신호 준수) — 사각 루프
 const aiCars=[]; const loop=[[-120,-120],[120,-120],[120,120],[-120,120]];
@@ -126,7 +131,7 @@ const cps=[]; [[0,100],[60,100],[60,40],[0,40],[0,100]].forEach(([x,z],i)=>{cons
 // --- 입력 ---
 const key={}; addEventListener('keydown',e=>{key[e.code]=true;if(e.code==='KeyF')tryEnter();if(e.code==='KeyE')startMission();if(e.code==='KeyR')reset();});
 addEventListener('keyup',e=>key[e.code]=false);
-let yaw=0,pitch=.35,drag=false,lx=0,ly=0;const cv=renderer.domElement;
+let yaw=-Math.PI/4,pitch=.32,drag=false,lx=0,ly=0;const cv=renderer.domElement;
 cv.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});addEventListener('pointerup',()=>drag=false);
 addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-lx)*.005;pitch=Math.min(1.2,Math.max(.05,pitch+(e.clientY-ly)*.003));lx=e.clientX;ly=e.clientY;});
 // --- 상태 ---
@@ -144,7 +149,7 @@ function startMission(){const n=nearestMk();if(!n){msg('마커(초록/빨강/노
  if(n==='delivery'){mission='delivery';mtimer=60;mk.delivery.material.color.set(0xffffff);msg('배달: 60초 안에 노랑 체크포인트(0,120)로!');cps.forEach(c=>c.visible=false);cps[4].visible=true;}
  if(n==='chase'){mission='chase';mtimer=30;evade=0;P.wanted=2;msg('추격: 30초간 순찰차를 따돌려라!');}
  if(n==='race'){mission='race';cpIdx=0;cps.forEach((c,i)=>c.visible=i===0);msg('레이스: 옥상...아니 지상 체크포인트 순서대로 통과!');}}
-function reset(){playerMesh.position.set(45,0,-30);P.vy=0;P.speed=0;myCar.position.set(45,0,-20);P.wanted=0;mission=null;cps.forEach(c=>c.visible=false);msg('리셋');}
+function reset(){playerMesh.position.set(60,0,60);P.vy=0;P.speed=0;myCar.position.set(60,0,52);P.wanted=0;mission=null;cps.forEach(c=>c.visible=false);camSnap=true;msg('리셋');}
 function bumpWanted(){if(P.wanted<3){P.wanted++;msg('수배 레벨 '+P.wanted+'! 순찰차가 추적한다. 멀리 숨으면 내려감');}}
 // 신호등 타이머(전역)
 let sigT=0;
@@ -152,7 +157,7 @@ let sigT=0;
 const mm=document.getElementById('minimap').getContext('2d');
 // --- 메인 루프 ---
 const clock=new THREE.Clock(); let dayT=60, frames=0,fpsT=0;
-const camTarget=new THREE.Vector3(); const ray=new THREE.Raycaster();
+const camTarget=new THREE.Vector3(); const ray=new THREE.Raycaster(); let camSnap=true;
 function step(){
  requestAnimationFrame(step);
  const dt=Math.min(clock.getDelta(),.05); const t=clock.elapsedTime;
@@ -235,11 +240,12 @@ function step(){
   if(cp.position.distanceTo(focus)<6){cp.visible=false;cpIdx++;if(cpIdx>=5){mission=null;mEl.textContent='레이스 완주!';msg('레이스 완주!');}else cps[cpIdx].visible=true;}}
  else mEl.innerHTML='근처 마커에서 <b class="k">E</b> 미션 시작 (1배달 2추격 3레이스 중 가까운 것)';
  // --- 카메라: 3인칭 추적 + 충돌 회피(간단) ---
- const back=P.onCar?9:6.5, h=P.onCar?3.6:3;
+ const back=P.onCar?10.5:6.5, h=P.onCar?3.6:3.8;
  camTarget.set(focus.x-Math.sin(yaw)*Math.cos(pitch)*back,focus.y+h+Math.sin(pitch)*back,focus.z-Math.cos(yaw)*Math.cos(pitch)*back);
  if(camTarget.y<1.2)camTarget.y=1.2;
- if(collide(camTarget.x,camTarget.z)){camTarget.x=(camTarget.x+focus.x)/2;camTarget.z=(camTarget.z+focus.z)/2;camTarget.y+=1.5;}
- camera.position.lerp(camTarget,.25); camera.lookAt(focus.x,focus.y+2,focus.z);
+ for(let i=0;i<3&&collide(camTarget.x,camTarget.z);i++){camTarget.x=(camTarget.x+focus.x)/2;camTarget.z=(camTarget.z+focus.z)/2;camTarget.y+=1.5;}
+ if(camSnap){camera.position.copy(camTarget);camSnap=false;}else camera.position.lerp(camTarget,.25);
+ camera.lookAt(focus.x,focus.y+2,focus.z);
  // --- HUD ---
  document.getElementById('wanted').textContent='수배 '+'★'.repeat(P.wanted)+'☆'.repeat(3-P.wanted)+(green?' 🟢':' 🔴');
  document.getElementById('stat').textContent=(P.onCar?'차량':'도보')+' | '+(night?'밤(가로등·네온 ON)':ph<.55&&ph>=.4?'노을':'낮')+(mission?' | 미션:'+mission:'');

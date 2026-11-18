@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
 <title>muse-spark-1.3 — 생각이 형태가 되는 순간</title>
 <style>
 :root{
@@ -26,7 +27,7 @@ body{background:var(--bg);color:var(--ink);font-family:Georgia,'Noto Serif KR','
 .progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);width:0;z-index:11}
 main{position:relative;z-index:1}
 .panel{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none}
-.card{pointer-events:auto;max-width:620px;width:100%;text-align:center;padding:44px 34px;background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:20px;opacity:.16;transform:translateY(36px);transition:opacity .5s,transform .5s}
+.card{pointer-events:auto;max-width:620px;width:100%;text-align:center;padding:44px 34px;background:color-mix(in srgb,var(--bg) 58%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:20px;opacity:.16;transform:translateY(36px);transition:opacity .5s,transform .5s}
 .panel.active .card{opacity:1;transform:none}
 .label{font-size:11px;letter-spacing:.3em;color:var(--accent);margin-bottom:16px}
 h1,h2{font-weight:600;line-height:1.25;letter-spacing:-.01em}
@@ -135,13 +136,14 @@ cam.position.z = 20;
 const uniforms = {
   uColor:{value:new THREE.Color('#1A1A18')},
   uAccent:{value:new THREE.Color('#E4572E')},
-  uSize:{value: mobile ? 5.2 : 4.2},
-  uTime:{value:0}, uMouse:{value:new THREE.Vector2(0,0)}, uGlow:{value:0}
+  uSize:{value: mobile ? 32 : 28},
+  uTime:{value:0}, uMouse:{value:new THREE.Vector2(0,0)}, uGlow:{value:0},
+  uPR:{value: Math.min(devicePixelRatio, mobile ? 1.5 : 2)}
 };
 const mat = new THREE.ShaderMaterial({
   uniforms, transparent:true, depthWrite:false, blending:THREE.NormalBlending,
   vertexShader:`attribute float seed; attribute float hot;
-    uniform float uSize,uTime,uGlow; uniform vec2 uMouse;
+    uniform float uSize,uTime,uGlow,uPR; uniform vec2 uMouse;
     varying float vHot;
     void main(){ vHot=hot;
       vec4 p=modelMatrix*vec4(position,1.0);
@@ -149,13 +151,14 @@ const mat = new THREE.ShaderMaterial({
       p.y+=cos(uTime*.5+seed*6.28)*.12 + uMouse.y*1.4;
       vec4 mv=viewMatrix*p;
       gl_Position=projectionMatrix*mv;
-      gl_PointSize=uSize*(1.0+uGlow*vHot*2.2)*(180.0/-mv.z)/100.0; }`,
+      float ps=uSize*(1.0+uGlow*vHot*2.2)*(300.0/-mv.z)/100.0;
+      gl_PointSize=max(ps,2.0*uPR); }`,
   fragmentShader:`uniform vec3 uColor,uAccent; varying float vHot;
     void main(){ vec2 c=gl_PointCoord-.5; float d=length(c);
       if(d>.5) discard;
-      float a=smoothstep(.5,.08,d);
+      float a=max(smoothstep(.5,.08,d), vHot*0.85);
       vec3 col=mix(uColor,uAccent,vHot);
-      gl_FragColor=vec4(col,a*.92); }`
+      gl_FragColor=vec4(col,a); }`
 });
 const geo = new THREE.BufferGeometry();
 const pos = new Float32Array(N*3);
@@ -203,7 +206,7 @@ function treeTarget(n){
 }
 const T=[];
 // 0 hero: title from particles
-T.push(sampleText([{t:'muse-spark',s:110},{t:'1.3',s:110}], N));
+T.push(sampleText([{t:'muse-spark',s:120},{t:'1.3',s:120}], N));
 // 1 reasoning tree
 T.push(treeTarget(N));
 // 2 code lines
@@ -228,7 +231,12 @@ T.push(treeTarget(N));
   const cap=sampleText([{t:'ask ?',s:80}],N-2600);
   const o=new Float32Array(N*3);
   for(let i=0;i<2600*3;i++)o[i]=f[i];
-  for(let i=2600*3;i<N*3;i++)o[i]=cap[i];
+  for(let i=2600*3;i<N*3;i++)o[i]=cap[i-2600*3];
+  T.push(o); }
+
+// 6 ambient dust field (scene-independent backdrop, i%8==7)
+{ const o=new Float32Array(N*3);
+  for(let i=0;i<N;i++){o[i*3]=R(-WORLD/2,WORLD/2);o[i*3+1]=R(-WORLD*.62/2,WORLD*.62/2);o[i*3+2]=R(-2,2);}
   T.push(o); }
 
 // --- hot (accent) flags per scene: hero sparkle / tree lit path / code ticks / center / nodes / box ---
@@ -240,6 +248,7 @@ function hotFor(s){
   if(s===3)for(let i=0;i<N;i++){const x=T[3][i*3],y=T[3][i*3+1];if(x*x+y*y<1.2)hot[i]=1;}
   if(s===4)for(let i=0;i<N;i+=5)hot[i]=1;
   if(s===5)for(let i=0;i<2600;i++)hot[i]=.9;
+  for(let i=7;i<N;i+=8)hot[i]=.15; // ambient dust stays subtle
   geo.attributes.hot.needsUpdate=true;
 }
 
@@ -298,13 +307,19 @@ function frame(){
   uniforms.uTime.value=t;
   const f=(reduced?0:progress)*5, i0=Math.min(4,Math.floor(f));
   let ft=f-i0; ft=ft*ft*(3-2*ft);
-  const A=T[i0],B=T[Math.min(5,i0+1)],P=geo.attributes.position.array;
+  const A=T[i0],B=T[Math.min(5,i0+1)],D=T[6],P=geo.attributes.position.array;
   const wob=reduced?0:1;
   const mx=uniforms.uMouse.value.x,my=uniforms.uMouse.value.y;
   for(let i=0;i<N;i++){
     const j=i*3,s=seed[i];
     const wx=wob?Math.sin(t*.8+s*6.28)*.15:0, wy=wob?Math.cos(t*.6+s*6.28)*.15:0;
-    P[j]  =A[j]+(B[j]-A[j])*ft+wx+mx*1.2*(1-Math.abs(A[j])/10);
+    if(i%8===7){ // dust: ignore morph, always backdrop
+      P[j]  =D[j]+wx+mx*1.2*(1-Math.abs(D[j])/10);
+      P[j+1]=D[j+1]+wy+my*1.2*(1-Math.abs(D[j+1])/8);
+      P[j+2]=D[j+2];
+      continue;
+    }
+    P[j]  =(A[j]+(B[j]-A[j])*ft)*1.35+wx+mx*1.2*(1-Math.abs(A[j])/10);
     P[j+1]=A[j+1]+(B[j+1]-A[j+1])*ft+wy+my*1.2*(1-Math.abs(A[j+1])/8);
     P[j+2]=A[j+2]+(B[j+2]-A[j+2])*ft;
   }
@@ -316,6 +331,7 @@ frame();
 addEventListener('resize',()=>{
   cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  uniforms.uPR.value=Math.min(devicePixelRatio, mobile ? 1.5 : 2);
 });
 </script>
 </body>

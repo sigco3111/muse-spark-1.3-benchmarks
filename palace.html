@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
 <title>GEUNJEONGJEON · BRICK 32s</title>
 <style>
 :root{--cream:#F2EEE6;--ink:#3A352C;--accent:#E8612C;--blue:#2C7BE8;--card:rgba(255,255,255,.82)}
@@ -14,9 +15,10 @@ font-family:ui-sans-serif,system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-se
 #top{top:14px;left:18px;right:18px;display:flex;align-items:center;gap:16px}
 #brand{font-size:15px;font-weight:800;letter-spacing:.12em}
 #brand b{color:var(--accent)}
-#phases{display:flex;gap:6px;flex:1}
-.ph{flex:1;max-width:130px;background:rgba(58,53,44,.10);border-radius:6px;font-size:11px;
-padding:5px 8px;display:flex;gap:6px;align-items:center;opacity:.55}
+#phases{display:flex;gap:6px;flex:1;min-width:0}
+.ph{flex:1 1 0;min-width:0;background:rgba(58,53,44,.10);border-radius:6px;font-size:10px;
+padding:4px 6px;display:flex;gap:5px;align-items:center;opacity:.55;line-height:1.3}
+.ph span{overflow-wrap:anywhere}
 .ph.on{background:var(--ink);color:var(--cream);opacity:1}
 .ph i{font-style:normal;color:var(--accent);font-weight:800}
 .ph.on i{color:#FFB18F}
@@ -89,9 +91,9 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.setClearColor(0xF2EEE6);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xF2EEE6);
-const ASP=innerWidth/innerHeight, DH=20;
+const ASP=innerWidth/innerHeight, DH=32;
 const camera=new THREE.OrthographicCamera(-DH*ASP,DH*ASP,DH,-DH,0.1,500);
-const CENTER=new THREE.Vector3(0,8,4);
+const CENTER=new THREE.Vector3(0,6.5,6);
 camera.position.set(CENTER.x+26,CENTER.y+22,CENTER.z+30);
 camera.lookAt(CENTER);
 scene.add(new THREE.HemisphereLight(0xffffff,0xCFC3A8,0.95));
@@ -209,7 +211,7 @@ let ERRORS=0;for(const p of PARTS)for(const b of bricks[p.id])
 // focus pillar (front-center-left) → weak joints source
 const FX=XS[2],FZ=ZS[5];
 const focusIdx=bricks.gidung.map((b,i)=>(Math.abs(b.x-FX)<0.01&&Math.abs(b.z-FZ)<0.01)?i:-1).filter(i=>i>=0);
-const WEAK=focusIdx.length, ERRORS=0;
+const WEAK=focusIdx.length;
 
 // ---------- InstancedMesh (body + stud per part) ----------
 const bodyGeo=new THREE.BoxGeometry(1,0.8,1);
@@ -347,9 +349,11 @@ function frame(){
     el.style.opacity=k.toFixed(3);
     el.style.transform=`translateY(${((1-k)*26).toFixed(1)}px)`;
   });
-  const sv=[TOTAL*stP,PH.length*stP,PARTS.length*stP,genMs*stP,0,0];
+  const finals=[TOTAL,PH.length,PARTS.length,genMs,ERRORS,0];
   const suf=['',`/${PH.length}`,`/${PARTS.length}`,'ms','',''];
-  statV.forEach((el,i)=>{el.textContent=(i===3?Math.round(sv[i]):Math.round(sv[i])).toLocaleString()+suf[i];});
+  const dim=stP<=0.001;
+  statV.forEach((el,i)=>{el.textContent=Math.round(dim?finals[i]:finals[i]*stP).toLocaleString()+suf[i];
+    el.parentElement.style.opacity=dim?'0.25':'1';});
 
   PH.forEach((p,i)=>{
     const nx=i+1<PH.length?PH[i+1][0]:32;

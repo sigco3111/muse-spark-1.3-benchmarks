@@ -1,52 +1,207 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>USB OBS 컨트롤러 미리보기 (시뮬레이션)</title>
-<style>body{margin:0;font-family:sans-serif;background:#111;color:#eee}#ui{position:fixed;left:10px;top:10px;background:#222;padding:10px;border-radius:8px;max-width:340px}#ui button{margin:2px}#oled{font-family:monospace;background:#000;color:#7dff9a;padding:8px;border-radius:4px;margin-top:8px}#led{width:20px;height:20px;border-radius:50%;background:#400;display:inline-block;vertical-align:middle}#led.on{background:red;box-shadow:0 0 12px red}input[type=range]{width:100%}</style>
-<script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
-</head><body>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB OBS 컨트롤러 미리보기 (시뮬레이션)</title>
+<link rel="icon" href="data:,">
+<style>
+body{margin:0;font-family:sans-serif;background:#111;color:#eee;overflow:hidden}
+#ui{position:fixed;left:10px;top:10px;background:#222;padding:10px;border-radius:8px;max-width:360px;z-index:10}
+#ui button{margin:2px}
+#ui .sim{background:#442200;border:1px solid #ff9900;border-radius:4px;padding:6px;margin-bottom:8px;font-size:13px}
+#oled{font-family:monospace;background:#000;color:#7dff9a;padding:8px;border-radius:4px;margin-top:8px;white-space:pre-line}
+#led{width:20px;height:20px;border-radius:50%;background:#400;display:inline-block;vertical-align:middle}
+#led.on{background:red;box-shadow:0 0 12px red}
+input[type=range]{width:100%}
+#log{font-size:12px;max-height:110px;overflow:auto;background:#111;border-radius:4px;padding:4px;margin-top:6px}
+canvas{display:block}
+.row{margin:4px 0}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js"}}</script>
+</head>
+<body>
 <div id="ui">
-<b>USB OBS 컨트롤러 — 시뮬레이션 명시 (실물 아님)</b><br>
-해상도 1920x1080 대응, 단일 파일 Three.js CDN.<br>
-<button onclick="cmd('rec')">REC 토글</button>
-<button onclick="cmd('s1')">Scene1</button>
-<button onclick="cmd('s2')">Scene2</button>
-<button onclick="toggleLink()">Disconnect/재연결</button><br>
-조립/분해 <input id="explode" type="range" min="0" max="30" value="0" oninput="explodeV(this.value)">
-시간 슬라이더(REC 경과) <input id="t" type="range" min="0" max="600" value="0" oninput="setT(this.value)">
-<div>LED <span id="led"></span> <span id="st">IDLE</span></div>
-<div id="oled">OBS CTRL<br>IDLE</div>
-<div id="log" style="font-size:12px;max-height:120px;overflow:auto"></div>
+<div class="sim"><b>시뮬레이션 (SIMULATION)</b><br>로컬 실행 시각화 전용. 실제 USB/OBS 제어 없음.</div>
+<div class="row">
+<button id="bRec">REC 토글</button>
+<button id="bS1">Scene1</button>
+<button id="bS2">Scene2</button>
+<button id="bLink">Disconnect</button>
 </div>
-<script>
-let rec=false, link=true, secs=0, seq=0, scene='Scene1';
-const led=document.getElementById('led'), st=document.getElementById('st'),
-      oled=document.getElementById('oled'), logEl=document.getElementById('log');
-function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
-function render(){led.className=rec&&link?'on':'';st.textContent=!link?'NO-LINK (OLED)':(rec?'REC '+fmt(secs):'IDLE');
-oled.innerHTML='OBS CTRL<br>'+(!link?'NO-LINK':(rec?'REC '+fmt(secs):'IDLE'))+'<br>'+scene;}
-function slog(m){logEl.innerHTML+='<div>'+m+'</div>';logEl.scrollTop=9999;}
-function cmd(k){if(!link){slog('무시: 링크 단절');return;}
-seq++; if(k==='rec'){slog('TX {"cmd":"rec_toggle","seq":'+seq+'}');rec=!rec;if(rec)secs=0;slog('RX {"rec":'+rec+',"time":'+secs+'} (실제 상태 반영 시뮬레이션)');}
-else{slog('TX {"cmd":"set_scene","name":"'+(k==='s1'?'Scene1':'Scene2')+'","seq":'+seq+'}');scene=k==='s1'?'Scene1':'Scene2';slog('장면 -> '+scene);}render();}
-function toggleLink(){link=!link;slog(link?'재연결: hello 재전송, 상태 재요청':'단절 시뮬레이션');render();}
-function setT(v){secs=+v;render();}
-// --- Three.js 간이 기판/케이스 ---
-const scene3=new THREE.Scene();scene3.background=new THREE.Color(0x111111);
-const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,1000);cam.position.set(60,50,90);
-const ren=new THREE.WebGLRenderer();ren.setSize(innerWidth,innerHeight);document.body.appendChild(ren.domElement);
-scene3.add(new THREE.AmbientLight(0xffffff,0.8));
-const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(50,80,30);scene3.add(dl);
+<div class="row">조립/분해 <input id="explode" type="range" min="0" max="30" value="0"></div>
+<div class="row">타임라인(0~12s) <input id="tl" type="range" min="0" max="12" step="0.1" value="0">
+<button id="bPlay">▶ 재생</button> <span id="tlv">0.0s</span></div>
+<div class="row">
+<label><input id="autoRot" type="checkbox" checked> 자동 회전</label>
+<button id="vTop">상단</button><button id="vFront">정면</button><button id="v3d">입체</button>
+<button id="bLid">케이스 열기</button>
+</div>
+<div class="row">LED <span id="led"></span> <span id="st">IDLE</span></div>
+<div id="oled">OBS CTRL
+IDLE
+Scene1</div>
+<div id="log"></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+// ---- 상태 ----
+let rec=false, link=true, secs=0, seq=0, sceneName='Scene1', lidOpen=false;
+const led=document.getElementById('led'), st=document.getElementById('st');
+const oledEl=document.getElementById('oled'), logEl=document.getElementById('log');
+const explodeEl=document.getElementById('explode'), tlEl=document.getElementById('tl'), tlv=document.getElementById('tlv');
+function fmt(s){s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+let logs=[];
+function slog(m){logs.push(m); if(logs.length>6)logs=logs.slice(-6); logEl.innerHTML=logs.map(x=>'<div>'+x+'</div>').join('');}
+
+// ---- OLED CanvasTexture ----
+const oc=document.createElement('canvas'); oc.width=oc.height=256;
+const octx=oc.getContext('2d');
+function drawOled(){
+  octx.fillStyle='#000'; octx.fillRect(0,0,256,256);
+  octx.fillStyle='#7dff9a'; octx.font='bold 30px monospace'; octx.textAlign='center';
+  octx.fillText('OBS CTRL',128,60);
+  const line2=!link?'NO-LINK':(rec?'REC '+fmt(secs):'IDLE');
+  octx.fillStyle=rec&&link?'#ff5555':'#7dff9a';
+  octx.font='bold 34px monospace'; octx.fillText(line2,128,130);
+  octx.fillStyle='#7dff9a'; octx.font='28px monospace'; octx.fillText(sceneName,128,190);
+  otex.needsUpdate=true;
+}
+const otex=new THREE.CanvasTexture(oc);
+
+// ---- Three.js 장면 ----
+const scene3=new THREE.Scene(); scene3.background=new THREE.Color(0x111111);
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,2000);
+let yaw=0.67, pitch=0.43, dist=168;
+function applyCam(){
+  const cp=Math.cos(pitch), sp=Math.sin(pitch);
+  cam.position.set(Math.sin(yaw)*cp*dist, sp*dist, Math.cos(yaw)*cp*dist);
+  cam.lookAt(0,0,0);
+}
+applyCam();
+const ren=new THREE.WebGLRenderer({antialias:true}); ren.setSize(innerWidth,innerHeight);
+document.body.appendChild(ren.domElement);
+scene3.add(new THREE.AmbientLight(0xffffff,0.9));
+const dl=new THREE.DirectionalLight(0xffffff,1.0); dl.position.set(50,80,30); scene3.add(dl);
+
 const gCase=new THREE.Group(), gLid=new THREE.Group();
+// 케이스 하판
+const bottom=new THREE.Mesh(new THREE.BoxGeometry(67,2,60),new THREE.MeshStandardMaterial({color:0x333333}));
+bottom.position.y=-2; gCase.add(bottom);
+// PCB 51x21
 const pcb=new THREE.Mesh(new THREE.BoxGeometry(51,2,21),new THREE.MeshStandardMaterial({color:0x0a6b3a}));
-const oledM=new THREE.Mesh(new THREE.BoxGeometry(27,3,27),new THREE.MeshStandardMaterial({color:0x222233}));
-oledM.position.set(0,3,-5);
-const ledM=new THREE.Mesh(new THREE.SphereGeometry(2.5,16,16),new THREE.MeshStandardMaterial({color:0xff0000,emissive:0x550000}));
-ledM.position.set(18,4,6);
-gCase.add(pcb,oledM,ledM);
-const lid=new THREE.Mesh(new THREE.BoxGeometry(67,2,60),new THREE.MeshStandardMaterial({color:0x888888,transparent:true,opacity:0.5}));
-lid.position.y=15;gLid.add(lid);
+gCase.add(pcb);
+// Pico + 핀
+const pico=new THREE.Mesh(new THREE.BoxGeometry(21,1.6,7),new THREE.MeshStandardMaterial({color:0x111111}));
+pico.position.set(-12,2.5,4); gCase.add(pico);
+const pinMat=new THREE.MeshStandardMaterial({color:0xcccccc});
+for(let i=0;i<8;i++){
+  const p=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),pinMat);
+  p.position.set(-20+i*2.4,2.0,8.5); gCase.add(p);
+}
+// OLED 27x27 발광면
+const oledBase=new THREE.Mesh(new THREE.BoxGeometry(28,2,28),new THREE.MeshStandardMaterial({color:0x222233}));
+oledBase.position.set(2,2,-2); gCase.add(oledBase);
+const oledM=new THREE.Mesh(new THREE.PlaneGeometry(27,27),
+  new THREE.MeshBasicMaterial({map:otex}));
+oledM.rotation.x=-Math.PI/2; oledM.position.set(2,3.1,-2); gCase.add(oledM);
+// 빨강 LED
+const ledM=new THREE.Mesh(new THREE.SphereGeometry(2.5,16,16),
+  new THREE.MeshStandardMaterial({color:0xff0000,emissive:0x220000}));
+ledM.position.set(20,3.5,6); gCase.add(ledM);
+// 버튼 3개
+const btnMat=new THREE.MeshStandardMaterial({color:0x2266ff});
+const btns=[];
+for(let i=0;i<3;i++){
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(3,3,2.5,24),btnMat.clone());
+  b.position.set(-6+i*9,3.5,7); gCase.add(b); btns.push(b);
+}
+// 투명 상판
+const lid=new THREE.Mesh(new THREE.BoxGeometry(67,2,60),
+  new THREE.MeshStandardMaterial({color:0x888888,transparent:true,opacity:0.25}));
+lid.position.y=15; gLid.add(lid);
 scene3.add(gCase,gLid);
-function explodeV(v){gLid.position.y=+v*0.8;}
-(function anim(){requestAnimationFrame(anim);gCase.rotation.y+=0.003;gLid.rotation.y+=0.003;gLid.position.x=gCase.position.x;
-ledM.material.emissive.setHex(rec&&link?0xff0000:0x220000);ren.render(scene3,cam);})();
+const LID_BASE=15;
+function explodeV(v){gLid.position.y=(+v)*0.8;}
+drawOled();
+
+// ---- UI 상태 반영 ----
+function render(){
+  led.className=rec&&link?'on':'';
+  st.textContent=!link?'NO-LINK (OLED)':(rec?'REC '+fmt(secs):'IDLE');
+  oledEl.textContent='OBS CTRL\n'+(!link?'NO-LINK':(rec?'REC '+fmt(secs):'IDLE'))+'\n'+sceneName;
+  drawOled();
+  ledM.material.emissive.setHex(rec&&link?0xff0000:0x220000);
+}
+function cmd(k){
+  if(!link){slog('무시: 링크 단절');return;}
+  seq++;
+  if(k==='rec'){slog('TX {"cmd":"rec_toggle","seq":'+seq+'}');rec=!rec;if(rec)secs=0;
+    slog('RX {"rec":'+rec+',"time":'+secs+'} (시뮬레이션)');}
+  else{const nm=k==='s1'?'Scene1':'Scene2';
+    slog('TX {"cmd":"set_scene","name":"'+nm+'","seq":'+seq+'}');
+    sceneName=nm; slog('장면 -> '+sceneName);}
+  render();
+}
+document.getElementById('bRec').onclick=()=>cmd('rec');
+document.getElementById('bS1').onclick=()=>cmd('s1');
+document.getElementById('bS2').onclick=()=>cmd('s2');
+document.getElementById('bLink').onclick=()=>{link=!link;
+  document.getElementById('bLink').textContent=link?'Disconnect':'재연결';
+  slog(link?'재연결: hello 재전송, 상태 재요청 (시뮬레이션)':'단절 시뮬레이션');render();};
+explodeEl.oninput=e=>{explodeV(e.target.value);};
+document.getElementById('bLid').onclick=()=>{lidOpen=!lidOpen;
+  explodeEl.value=lidOpen?30:0; explodeV(explodeEl.value);
+  slog(lidOpen?'케이스 분해 (시뮬레이션)':'케이스 조립 (시뮬레이션)');};
+
+// ---- 타임라인 0~12s: 상판 분해 -> 버튼 press -> REC 점등 ----
+let playing=false, playTimer=null;
+function applyTimeline(t){
+  tlv.textContent=(+t).toFixed(1)+'s';
+  const lidV=t<=4?(t/4)*30:30;
+  explodeEl.value=lidV; explodeV(lidV);
+  const press=t>=4&&t<=8?Math.exp(-Math.pow(t-6,2)/0.4):0; // 6s 중심 펄스
+  btns[0].position.y=3.5-press*1.2;
+  btns[0].material.color.setHex(press>0.3?0xffaa00:0x2266ff);
+  const wantRec=t>=8&&link;
+  if(wantRec&&!rec){rec=true;secs=0;slog('TL 8s: REC ON (시뮬레이션)');}
+  if(!wantRec&&t<8&&rec){rec=false;slog('TL 리셋: REC OFF');}
+  if(rec)secs=Math.max(0,t-8);
+  render();
+}
+tlEl.oninput=e=>applyTimeline(e.target.value);
+document.getElementById('bPlay').onclick=()=>{
+  if(playing){clearInterval(playTimer);playing=false;
+    document.getElementById('bPlay').textContent='▶ 재생';return;}
+  playing=true; document.getElementById('bPlay').textContent='⏸ 정지';
+  let t=parseFloat(tlEl.value)||0;
+  playTimer=setInterval(()=>{
+    t+=0.2; if(t>=12){t=12;clearInterval(playTimer);playing=false;
+      document.getElementById('bPlay').textContent='▶ 재생';}
+    tlEl.value=t; applyTimeline(t);
+  },100);
+};
+
+// ---- 카메라 조작: 자동회전/드래그/휠줌/프리셋 ----
+let dragging=false,px=0,py=0;
+ren.domElement.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;});
+addEventListener('pointermove',e=>{if(!dragging)return;
+  yaw+=(e.clientX-px)*0.01; pitch=Math.min(1.4,Math.max(0.05,pitch+(e.clientY-py)*0.01));
+  px=e.clientX;py=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('wheel',e=>{dist=Math.min(200,Math.max(60,dist+e.deltaY*0.05));},{passive:true});
+document.getElementById('vTop').onclick=()=>{yaw=0;pitch=1.4;dist=120;};
+document.getElementById('vFront').onclick=()=>{yaw=0;pitch=0.12;dist=130;};
+document.getElementById('v3d').onclick=()=>{yaw=0.67;pitch=0.43;dist=168;};
+
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
+const autoRot=document.getElementById('autoRot');
+(function anim(){requestAnimationFrame(anim);
+  if(autoRot.checked&&!dragging)yaw+=0.004;
+  applyCam(); ren.render(scene3,cam);})();
 render();
-</script></body></html>
+slog('시뮬레이션 준비 완료 (1920x1080 대응)');
+</script>
+</body>
+</html>
