@@ -350,7 +350,7 @@ function frame(){
     el.style.transform=`translateY(${((1-k)*26).toFixed(1)}px)`;
   });
   const finals=[TOTAL,PH.length,PARTS.length,genMs,ERRORS,0];
-  const suf=['',`/${PH.length}`,`/${PARTS.length}`,'ms','',''];
+  const suf=['',`/${PH.length}`,`/${PARTS.length}`,' ms','',''];
   const dim=stP<=0.001;
   statV.forEach((el,i)=>{el.textContent=Math.round(dim?finals[i]:finals[i]*stP).toLocaleString()+suf[i];
     el.parentElement.style.opacity=dim?'0.25':'1';});
