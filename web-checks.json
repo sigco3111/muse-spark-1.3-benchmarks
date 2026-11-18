@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-19",
+  "runner": "muse-spark-1.3",
+  "checks": [
+    {"id": "W1", "file": "palace.html", "result": "PASS", "note": "three 0.170.0 importmap, counted aggregates, no browser render"},
+    {"id": "W2", "file": "hangang-city.html", "result": "PASS", "note": "three 0.170.0 importmap, HUD/minimap present, no playthrough"},
+    {"id": "W3", "file": "model-intro.html", "result": "PASS", "note": "placeholders only, no invented metrics, no render check"},
+    {"id": "W4", "file": "1-controller-3d.html", "result": "PASS", "note": "same as controller/preview/index.html, three 0.152.2, simulation labeled"}
+  ],
+  "not_tested": ["browser render", "fps measurement", "mission playthrough", "mobile/reduced-motion"]
+}

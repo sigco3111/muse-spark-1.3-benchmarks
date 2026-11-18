@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>USB OBS 컨트롤러 미리보기 (시뮬레이션)</title>
+<style>body{margin:0;font-family:sans-serif;background:#111;color:#eee}#ui{position:fixed;left:10px;top:10px;background:#222;padding:10px;border-radius:8px;max-width:340px}#ui button{margin:2px}#oled{font-family:monospace;background:#000;color:#7dff9a;padding:8px;border-radius:4px;margin-top:8px}#led{width:20px;height:20px;border-radius:50%;background:#400;display:inline-block;vertical-align:middle}#led.on{background:red;box-shadow:0 0 12px red}input[type=range]{width:100%}</style>
+<script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+</head><body>
+<div id="ui">
+<b>USB OBS 컨트롤러 — 시뮬레이션 명시 (실물 아님)</b><br>
+해상도 1920x1080 대응, 단일 파일 Three.js CDN.<br>
+<button onclick="cmd('rec')">REC 토글</button>
+<button onclick="cmd('s1')">Scene1</button>
+<button onclick="cmd('s2')">Scene2</button>
+<button onclick="toggleLink()">Disconnect/재연결</button><br>
+조립/분해 <input id="explode" type="range" min="0" max="30" value="0" oninput="explodeV(this.value)">
+시간 슬라이더(REC 경과) <input id="t" type="range" min="0" max="600" value="0" oninput="setT(this.value)">
+<div>LED <span id="led"></span> <span id="st">IDLE</span></div>
+<div id="oled">OBS CTRL<br>IDLE</div>
+<div id="log" style="font-size:12px;max-height:120px;overflow:auto"></div>
+</div>
+<script>
+let rec=false, link=true, secs=0, seq=0, scene='Scene1';
+const led=document.getElementById('led'), st=document.getElementById('st'),
+      oled=document.getElementById('oled'), logEl=document.getElementById('log');
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function render(){led.className=rec&&link?'on':'';st.textContent=!link?'NO-LINK (OLED)':(rec?'REC '+fmt(secs):'IDLE');
+oled.innerHTML='OBS CTRL<br>'+(!link?'NO-LINK':(rec?'REC '+fmt(secs):'IDLE'))+'<br>'+scene;}
+function slog(m){logEl.innerHTML+='<div>'+m+'</div>';logEl.scrollTop=9999;}
+function cmd(k){if(!link){slog('무시: 링크 단절');return;}
+seq++; if(k==='rec'){slog('TX {"cmd":"rec_toggle","seq":'+seq+'}');rec=!rec;if(rec)secs=0;slog('RX {"rec":'+rec+',"time":'+secs+'} (실제 상태 반영 시뮬레이션)');}
+else{slog('TX {"cmd":"set_scene","name":"'+(k==='s1'?'Scene1':'Scene2')+'","seq":'+seq+'}');scene=k==='s1'?'Scene1':'Scene2';slog('장면 -> '+scene);}render();}
+function toggleLink(){link=!link;slog(link?'재연결: hello 재전송, 상태 재요청':'단절 시뮬레이션');render();}
+function setT(v){secs=+v;render();}
+// --- Three.js 간이 기판/케이스 ---
+const scene3=new THREE.Scene();scene3.background=new THREE.Color(0x111111);
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,1000);cam.position.set(60,50,90);
+const ren=new THREE.WebGLRenderer();ren.setSize(innerWidth,innerHeight);document.body.appendChild(ren.domElement);
+scene3.add(new THREE.AmbientLight(0xffffff,0.8));
+const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(50,80,30);scene3.add(dl);
+const gCase=new THREE.Group(), gLid=new THREE.Group();
+const pcb=new THREE.Mesh(new THREE.BoxGeometry(51,2,21),new THREE.MeshStandardMaterial({color:0x0a6b3a}));
+const oledM=new THREE.Mesh(new THREE.BoxGeometry(27,3,27),new THREE.MeshStandardMaterial({color:0x222233}));
+oledM.position.set(0,3,-5);
+const ledM=new THREE.Mesh(new THREE.SphereGeometry(2.5,16,16),new THREE.MeshStandardMaterial({color:0xff0000,emissive:0x550000}));
+ledM.position.set(18,4,6);
+gCase.add(pcb,oledM,ledM);
+const lid=new THREE.Mesh(new THREE.BoxGeometry(67,2,60),new THREE.MeshStandardMaterial({color:0x888888,transparent:true,opacity:0.5}));
+lid.position.y=15;gLid.add(lid);
+scene3.add(gCase,gLid);
+function explodeV(v){gLid.position.y=+v*0.8;}
+(function anim(){requestAnimationFrame(anim);gCase.rotation.y+=0.003;gLid.rotation.y+=0.003;gLid.position.x=gCase.position.x;
+ledM.material.emissive.setHex(rec&&link?0xff0000:0x220000);ren.render(scene3,cam);})();
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight);});
+render();
+</script></body></html>

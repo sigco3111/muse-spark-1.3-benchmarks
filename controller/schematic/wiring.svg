@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" font-family="sans-serif">
+<text x="20" y="30" font-size="18">USB OBS 컨트롤러 배선도 — 전기 CAD 아님, 배선도(그림)</text>
+<rect x="270" y="80" width="100" height="220" fill="#eee" stroke="black"/>
+<text x="280" y="110" font-size="14">Pico</text>
+<text x="280" y="130" font-size="11">GP0 SDA ── OLED SDA</text>
+<text x="280" y="150" font-size="11">GP1 SCL ── OLED SCL</text>
+<text x="280" y="170" font-size="11">GP13 ── REC btn ── GND</text>
+<text x="280" y="190" font-size="11">GP14 ── S1 btn ── GND</text>
+<text x="280" y="210" font-size="11">GP15 ── S2 btn ── GND</text>
+<text x="280" y="230" font-size="11">GP16 ─220Ω─ LED ─ GND</text>
+<text x="280" y="250" font-size="11">3V3 ── OLED VCC</text>
+<text x="280" y="270" font-size="11">GND ── OLED GND</text>
+<rect x="60" y="120" width="110" height="70" fill="#dde" stroke="black"/>
+<text x="70" y="145" font-size="12">SSD1306 OLED</text>
+<text x="70" y="165" font-size="12">0.96" I2C</text>
+<circle cx="520" cy="140" r="14" fill="red"/>
+<text x="495" y="170" font-size="12">REC LED</text>
+<circle cx="470" cy="230" r="12" fill="white" stroke="black"/><text x="458" y="260" font-size="11">REC</text>
+<circle cx="520" cy="230" r="12" fill="white" stroke="black"/><text x="510" y="260" font-size="11">S1</text>
+<circle cx="570" cy="230" r="12" fill="white" stroke="black"/><text x="560" y="260" font-size="11">S2</text>
+<text x="60" y="340" font-size="12">Micro USB(온보드) → PC (USB CDC 115200) / 상세 핀맵·전원은 WIRING.md</text>
+</svg>

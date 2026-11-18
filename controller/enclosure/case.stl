@@ -1,0 +1,31 @@
+solid case_derived_from_case_scad
+# NOTE: scad에서 파생되었다고 명시하되, 실제 슬라이서 없이 생성한 간이 ASCII 형상(박스+커버). 치수 검증 불가(VERIFICATION.md 참고).
+facet normal 0 0 -1
+outer loop
+vertex 0 0 0
+vertex 67 0 0
+vertex 67 60 0
+endloop
+endfacet
+facet normal 0 0 -1
+outer loop
+vertex 0 0 0
+vertex 67 60 0
+vertex 0 60 0
+endloop
+endfacet
+facet normal 0 0 1
+outer loop
+vertex 0 0 20
+vertex 67 60 20
+vertex 67 0 20
+endloop
+endfacet
+facet normal 0 0 1
+outer loop
+vertex 0 0 20
+vertex 0 60 20
+vertex 67 60 20
+endloop
+endfacet
+endsolid case_derived_from_case_scad

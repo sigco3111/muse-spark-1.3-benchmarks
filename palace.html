@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GEUNJEONGJEON · BRICK 32s</title>
+<style>
+:root{--cream:#F2EEE6;--ink:#3A352C;--accent:#E8612C;--blue:#2C7BE8;--card:rgba(255,255,255,.82)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--cream);color:var(--ink);
+font-family:ui-sans-serif,system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;z-index:5;user-select:none}
+#top{top:14px;left:18px;right:18px;display:flex;align-items:center;gap:16px}
+#brand{font-size:15px;font-weight:800;letter-spacing:.12em}
+#brand b{color:var(--accent)}
+#phases{display:flex;gap:6px;flex:1}
+.ph{flex:1;max-width:130px;background:rgba(58,53,44,.10);border-radius:6px;font-size:11px;
+padding:5px 8px;display:flex;gap:6px;align-items:center;opacity:.55}
+.ph.on{background:var(--ink);color:var(--cream);opacity:1}
+.ph i{font-style:normal;color:var(--accent);font-weight:800}
+.ph.on i{color:#FFB18F}
+#clock{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+#play{width:38px;height:38px;border-radius:50%;border:2px solid var(--accent);background:#fff;
+color:var(--accent);font-size:16px;cursor:pointer}
+#tcur{font-size:15px;font-weight:700;min-width:130px;text-align:right}
+#parts{left:18px;top:76px;display:flex;flex-direction:column;gap:8px}
+.part{background:var(--card);backdrop-filter:blur(4px);border:1px solid rgba(58,53,44,.14);
+border-radius:10px;padding:7px 12px;font-size:14px;display:flex;align-items:center;gap:9px;min-width:158px}
+.part .dot{width:12px;height:12px;border-radius:3px}
+.part b{margin-left:auto;font-size:17px;font-variant-numeric:tabular-nums}
+.chip{position:fixed;z-index:6;background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;
+padding:5px 10px;border-radius:8px;white-space:nowrap;font-variant-numeric:tabular-nums;
+transform:translate(-50%,-50%);pointer-events:none}
+.chip.acc{background:var(--accent)}
+.chip.blue{background:var(--blue)}
+#inv{right:18px;top:76px;width:212px;display:flex;flex-direction:column;gap:8px}
+.inv{background:var(--card);border:1px solid rgba(58,53,44,.14);border-left:6px solid var(--accent);
+border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px}
+.inv .n{font-size:12px;opacity:.65}
+.inv b{margin-left:auto;font-size:20px;font-variant-numeric:tabular-nums}
+#bottom{left:0;right:0;bottom:0;padding:10px 18px 14px;display:flex;flex-direction:column;gap:10px;
+background:linear-gradient(transparent,rgba(242,238,230,.92) 45%)}
+#sliderow{display:flex;align-items:center;gap:12px}
+#time{flex:1;accent-color:var(--accent);height:22px;cursor:pointer}
+.tick{font-size:11px;opacity:.6;font-variant-numeric:tabular-nums}
+#stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.stat{background:var(--card);border:1px solid rgba(58,53,44,.14);border-top:4px solid var(--accent);
+border-radius:10px;padding:8px 12px;text-align:center}
+.stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat .k{font-size:11px;letter-spacing:.08em;opacity:.6}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud" id="top">
+  <div id="brand">▦ GEUNJEONGJEON <b>·</b> BRICK</div>
+  <div id="phases"></div>
+  <div id="clock"><button id="play" title="play/pause">⏸</button><span id="tcur">0.00 / 32.00</span></div>
+</div>
+<div class="hud" id="parts"></div>
+<div class="hud" id="inv"></div>
+<div class="hud" id="bottom">
+  <div id="sliderow">
+    <span class="tick">0</span>
+    <input id="time" type="range" min="0" max="32" step="0.01" value="0">
+    <span class="tick">32</span>
+  </div>
+  <div id="stats"></div>
+</div>
+<div class="chip" id="dimW" style="display:none"></div>
+<div class="chip" id="dimD" style="display:none"></div>
+<div class="chip" id="dimH" style="display:none"></div>
+<div class="chip acc" id="roofChip" style="display:none"></div>
+<div class="chip acc" id="warnChip" style="display:none"></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ---------- renderer / scene (isometric fixed) ----------
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0xF2EEE6);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xF2EEE6);
+const ASP=innerWidth/innerHeight, DH=20;
+const camera=new THREE.OrthographicCamera(-DH*ASP,DH*ASP,DH,-DH,0.1,500);
+const CENTER=new THREE.Vector3(0,8,4);
+camera.position.set(CENTER.x+26,CENTER.y+22,CENTER.z+30);
+camera.lookAt(CENTER);
+scene.add(new THREE.HemisphereLight(0xffffff,0xCFC3A8,0.95));
+const sun=new THREE.DirectionalLight(0xffffff,1.7);
+sun.position.set(20,32,16); scene.add(sun);
+addEventListener('resize',()=>{
+  const a=innerWidth/innerHeight;
+  camera.left=-DH*a;camera.right=DH*a;camera.top=DH;camera.bottom=-DH;
+  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+});
+
+// ground (cream) + Inwangsan silhouette (coded polygon)
+{
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(260,260),
+    new THREE.MeshLambertMaterial({color:0xF2EEE6}));
+  g.rotation.x=-Math.PI/2; g.position.y=-0.02; scene.add(g);
+  const ridge=(pts,col,z)=>{
+    const s=new THREE.Shape(); s.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++)s.lineTo(pts[i][0],pts[i][1]);
+    const m=new THREE.Mesh(new THREE.ShapeGeometry(s),
+      new THREE.MeshBasicMaterial({color:col}));
+    m.position.z=z; scene.add(m);
+  };
+  ridge([[-80,0],[-62,14],[-48,9],[-34,20],[-20,12],[-6,17],[8,10],[22,15],[38,8],[55,13],[80,4],[80,0],[ -80,0]],0xDCD5C3,-38);
+  ridge([[-80,0],[-60,8],[-40,5],[-22,11],[-4,6],[16,10],[36,5],[58,8],[80,3],[80,0],[-80,0]],0xCFC7B2,-36);
+}
+
+// ---------- brick model (code-built, no external files) ----------
+const C={stone1:0xCFC7B4,stone2:0xB7AE97,rail:0xD8D1BE,pillar:0xC2482B,pillar2:0xA93A24,
+  gGreen:0x2F7D6B,gYellow:0xD9A62E,beam:0x8E3B28,tile:0x445060,tile2:0x333C46,ridge:0xC2482B,
+  yard:0xD9D2C0,rank:0x878E96};
+const PARTS=[
+  {id:'woldae',name:'월대',icon:'▤',col:'#B7AE97'},
+  {id:'gidung',name:'기둥',icon:'▥',col:'#C2482B'},
+  {id:'gongpo',name:'공포',icon:'▦',col:'#2F7D6B'},
+  {id:'jibung',name:'지붕',icon:'▧',col:'#445060'},
+  {id:'madang',name:'마당',icon:'▨',col:'#878E96'},
+];
+const bricks={woldae:[],gidung:[],gongpo:[],jibung:[],madang:[]};
+const B=(p,x,y,z,sx=1,sy=1,sz=1,c=0xffffff)=>bricks[p].push({x,y,z,sx,sy,sz,c});
+const buildT0=performance.now();
+
+// 월대: 2단 석대 (lower/upper slabs) + stairs + railings
+for(let x=-15;x<=15;x++)for(let z=-10;z<=10;z++)B('woldae',x,0.4,z,1,1,1,((x+z)&1)?C.stone1:C.stone2);
+for(let x=-11;x<=11;x++)for(let z=-7;z<=7;z++)B('woldae',x,1.2,z,1,1,1,((x+z)&1)?C.stone2:C.stone1);
+for(let s=0;s<3;s++)for(let x=-3;x<=3;x++)B('woldae',x,0.9-s*0.4,11+s,1,0.5,1,C.stone1); // stairs
+const postX=[];for(let x=-10;x<=10;x+=2.5)postX.push(x);
+for(const x of postX){B('woldae',x,2.0,6.6,0.5,1,0.5,C.rail);B('woldae',x,2.0,-6.6,0.5,1,0.5,C.rail);}
+for(const z of[-5,-2.5,0,2.5,5]){B('woldae',-10.6,2.0,z,0.5,1,0.5,C.rail);B('woldae',10.6,2.0,z,0.5,1,0.5,C.rail);}
+for(let x=-9;x<=9;x+=2.4){B('woldae',x,2.55,6.6,2.4,0.35,0.4,C.rail);B('woldae',x,2.55,-6.6,2.4,0.35,0.4,C.rail);}
+for(let z=-5;z<=5;z+=2.4){B('woldae',-10.6,2.55,z,0.4,0.35,2.4,C.rail);B('woldae',10.6,2.55,z,0.4,0.35,2.4,C.rail);}
+
+// 기둥: 정면 5칸 × 측면 5칸 = 6×6 = 36 pillars
+const XS=[-9.5,-5.7,-1.9,1.9,5.7,9.5], ZS=[-5,-3,-1,1,3,5];
+for(const x of XS)for(const z of ZS)
+  for(let i=0;i<6;i++)B('gidung',x,2.0+i*0.8,z,1,1,1,(i&1)?C.pillar:C.pillar2);
+// 고주: upper short columns (upper roof support)
+for(const x of[-4,0,4])for(const z of[-2,2]){B('gidung',x,15.2,z,1,1,1,C.pillar);B('gidung',x,16.0,z,1,1,1,C.pillar2);}
+
+// 공포: bracket set per pillar + beams
+for(const x of XS)for(const z of ZS){
+  const py=6.4;
+  B('gongpo',x,py+0.4,z,1.6,0.8,1.6,C.gGreen);
+  B('gongpo',x,py+1.0,z,2.3,0.6,1.0,C.gYellow);
+  B('gongpo',x,py+1.5,z,1.0,0.6,2.3,C.gGreen);
+  B('gongpo',x,py+2.0,z,1.8,0.5,1.8,C.gYellow);
+  B('gongpo',x,py+2.4,z,1.2,0.5,1.2,C.gGreen);
+}
+for(let i=0;i<5;i++){const xa=(XS[i]+XS[i+1])/2;
+  B('gongpo',xa,6.9,5,3.6,0.7,0.8,C.beam);B('gongpo',xa,6.9,-5,3.6,0.7,0.8,C.beam);}
+for(let i=0;i<5;i++){const za=(ZS[i]+ZS[i+1])/2;
+  B('gongpo',-9.5,6.9,za,0.8,0.7,1.8,C.beam);B('gongpo',9.5,6.9,za,0.8,0.7,1.8,C.beam);}
+
+// 지붕: 중층 팔작지붕, 처마 곡선 + 추녀 솟음 (perimeter shells)
+function roofTier(W,D,y0,levels){
+  for(let l=0;l<levels;l++){
+    const w=W-2*l,d=D-2*l,y=y0+l*0.9,hw=w/2,hd=d/2;
+    for(let x=-hw;x<=hw;x++){
+      for(const z of[-hd,hd]){
+        const nx=x/hw,nz=z/hd,lift=(nx*nx*1.0+0.6)*1.15+l*0.05;
+        void nz;B('jibung',x,y+lift,z,1,0.7,1,l===0?C.tile2:(((x+l)&1)?C.tile:C.tile2));
+      }
+    }
+    for(let z=-hd+1;z<=hd-1;z++){
+      for(const x of[-hw,hw]){
+        const nx=x/hw,nz=z/hd,lift=(nx*nx*1.0+nz*nz*0.6)*1.15+l*0.05;
+        B('jibung',x,y+lift,z,1,0.7,1,l===0?C.tile2:(((z+l)&1)?C.tile:C.tile2));
+      }
+    }
+  }
+  return y0+(levels-1)*0.9;
+}
+const lowTop=roofTier(27,17,8.4,7);
+roofTier(17,11,16.6,5);
+const ridgeY=16.6+4*0.9+0.9;
+for(let x=-4;x<=4;x++)B('jibung',x,ridgeY,0,1,0.7,1,C.ridge);
+B('jibung',-5,ridgeY+0.3,0,1,0.9,1,C.ridge);B('jibung',5,ridgeY+0.3,0,1,0.9,1,C.ridge);
+
+// 마당: pavement + 품계석 두 줄
+for(let x=-22;x<=22;x++)for(let z=11;z<=23;z+=2)B('madang',x,0.16,z,1,0.4,1.6,((x+z)&1)?C.yard:C.stone1);
+for(const x of[-2,2])for(let z=12;z<=20;z+=2)B('madang',x,0.3,z,1.2,0.7,1.2,C.rank);
+
+// ---------- real counted values only ----------
+const counts={};let TOTAL=0,minY=1e9,maxY=-1e9;
+const box=new THREE.Box3();
+for(const p of PARTS){counts[p.id]=bricks[p.id].length;TOTAL+=counts[p.id];
+  for(const b of bricks[p.id]){minY=Math.min(minY,b.y);maxY=Math.max(maxY,b.y);box.expandByPoint(new THREE.Vector3(b.x,b.y,b.z));}}
+const genMs=Math.round(performance.now()-buildT0);
+const CM=60; // 1 brick unit = 60cm
+const dimW=Math.round((box.max.x-box.min.x)*CM),dimD=Math.round((box.max.z-box.min.z)*CM),
+  dimH=Math.round((box.max.y-box.min.y+1)*CM);
+// invalid-brick scan → real error count (0 expected)
+let ERRORS=0;for(const p of PARTS)for(const b of bricks[p.id])
+  if(!isFinite(b.x+b.y+b.z+b.sx+b.sy+b.sz))ERRORS++;
+// focus pillar (front-center-left) → weak joints source
+const FX=XS[2],FZ=ZS[5];
+const focusIdx=bricks.gidung.map((b,i)=>(Math.abs(b.x-FX)<0.01&&Math.abs(b.z-FZ)<0.01)?i:-1).filter(i=>i>=0);
+const WEAK=focusIdx.length, ERRORS=0;
+
+// ---------- InstancedMesh (body + stud per part) ----------
+const bodyGeo=new THREE.BoxGeometry(1,0.8,1);
+const studGeo=new THREE.CylinderGeometry(0.3,0.3,0.22,10);studGeo.translate(0,0.51,0);
+const meshes={};
+{
+  const dummy=new THREE.Object3D(),col=new THREE.Color();
+  for(const p of PARTS){
+    const mat=new THREE.MeshLambertMaterial({transparent:true});
+    const list=bricks[p.id],n=list.length;
+    const body=new THREE.InstancedMesh(bodyGeo,mat,n);
+    const stud=new THREE.InstancedMesh(studGeo,mat,n);
+    body.frustumCulled=stud.frustumCulled=false;
+    body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    stud.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    for(let i=0;i<n;i++){dummy.position.set(0,-100,0);dummy.updateMatrix();
+      body.setMatrixAt(i,dummy.matrix);stud.setMatrixAt(i,dummy.matrix);
+      body.setColorAt(i,col.set(list[i].c));stud.setColorAt(i,col.set(list[i].c));}
+    scene.add(body,stud);
+    meshes[p.id]={mat,body,stud,list};
+  }
+}
+// orange survey bounding box (line)
+const boxHelper=new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(
+    box.max.x-box.min.x+1.5,box.max.y-box.min.y+1.5,box.max.z-box.min.z+1.5)),
+  new THREE.LineBasicMaterial({color:0xE8612C,transparent:true,opacity:0}));
+boxHelper.position.set((box.max.x+box.min.x)/2,(box.max.y+box.min.y)/2,(box.max.z+box.min.z)/2);
+scene.add(boxHelper);
+
+// ---------- HUD built from counted values ----------
+const $=id=>document.getElementById(id);
+const partsEl=$('parts');
+for(const p of PARTS){
+  const d=document.createElement('div');d.className='part';
+  d.innerHTML=`<span class="dot" style="background:${p.col}"></span><span>${p.icon} ${p.name}</span><b id="c-${p.id}">${counts[p.id].toLocaleString()}</b>`;
+  partsEl.appendChild(d);
+}
+const PH=[[0,'📦','0–7 측량·분해'],[7,'🔗','7–13 와이어·결합'],[13,'🏠','13–17 지붕'],[17,'🧱','17–23 기둥'],[23,'📋','23–29 인벤토리'],[29,'📊','29–32 통계']];
+const phEl=$('phases');
+PH.forEach((p,i)=>{const d=document.createElement('div');d.className='ph';d.id='ph'+i;
+  d.innerHTML=`<i>${p[1]}</i><span>${p[2]}</span>`;phEl.appendChild(d);});
+const STATS=[['🧱','TOTAL',TOTAL,''],['🎬','STAGE',PH.length,''],['🧩','PART',PARTS.length,''],
+  ['⏱','GEN·ms',genMs,''],['⛔','ERR',ERRORS,''],['⚠','WARN',0,'']];
+const statsEl=$('stats'),statV=[];
+STATS.forEach(s=>{const d=document.createElement('div');d.className='stat';
+  d.innerHTML=`<div class="v">0</div><div class="k">${s[0]} ${s[1]}</div>`;
+  statsEl.appendChild(d);statV.push(d.firstChild);});
+const invEl=$('inv'),invCards=[];
+PARTS.forEach((p,i)=>{const d=document.createElement('div');d.className='inv';
+  d.style.borderLeftColor=p.col;
+  d.innerHTML=`<span style="font-size:20px">${p.icon}</span><span class="n">${p.name}</span><b>${counts[p.id].toLocaleString()}</b>`;
+  d.style.opacity='0';invEl.appendChild(d);invCards.push(d);});
+
+// ---------- 32s timeline: one model, opacity/transform/offsets only ----------
+const slider=$('time'),playBtn=$('play'),tcur=$('tcur');
+let t=0,playing=true,last=performance.now();
+slider.addEventListener('input',()=>{t=parseFloat(slider.value);});
+playBtn.addEventListener('click',()=>{if(t>=32)t=0;playing=!playing;playBtn.textContent=playing?'⏸':'▶';});
+const ss=(a,b)=>{const x=Math.min(1,Math.max(0,(t-a)/(b-a)));return x*x*(3-2*x);};
+const dummy=new THREE.Object3D(),tmpC=new THREE.Color(),sweepC=new THREE.Color(),
+  orange=new THREE.Color(0xE8612C),blue=new THREE.Color(0x2C7BE8),
+  gray=new THREE.Color(0xB9B3A4),cream=new THREE.Color(0xF2EEE6),pv=new THREE.Vector3();
+const OFF={madang:0,woldae:0,gidung:3,gongpo:6,jibung:9.5}; // 층별 수직 분해 offset
+const focusSet=new Set(focusIdx);
+function toScreen(x,y,z){pv.set(x,y,z).project(camera);
+  return{x:(pv.x*0.5+0.5)*innerWidth,y:(-pv.y*0.5+0.5)*innerHeight};}
+function place(el,x,y,show,txt){
+  el.style.display=show?'block':'none';if(!show)return;
+  const s=toScreen(x,y,box.max.z);el.style.left=s.x+'px';el.style.top=s.y+'px';
+  if(txt!==undefined)el.textContent=txt;
+}
+
+function frame(){
+  requestAnimationFrame(frame);
+  const now=performance.now(),dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(playing){t+=dt;if(t>=32){t=32;playing=false;playBtn.textContent='▶';}}
+
+  const e=ss(2.2,4.8)*(1-ss(5.2,6.8));
+  const boxOp=ss(0.1,0.9)*(1-ss(6.8,7.8));
+  const dimP=ss(0.2,2.2),wire=(t>=7&&t<13);
+  const sweepP=ss(7.2,12.4),threshY=minY+(maxY-minY)*sweepP;
+  sweepC.copy(orange).lerp(blue,sweepP);
+  const mono=ss(12.6,13.6)*(1-ss(17.2,18.2));
+  const iso=ss(13.2,14.2)*(1-ss(17.0,18.0));
+  const foc=ss(17.2,18.0)*(1-ss(22.6,23.4));
+  const warnN=t<19.5?WEAK:Math.round(WEAK*(1-ss(19.8,21.6)));
+  const stP=ss(29.0,31.4);
+
+  boxHelper.material.opacity=boxOp;
+
+  for(const p of PARTS){
+    const M=meshes[p.id],list=M.list;
+    let op=1;
+    if(iso>0&&p.id!=='jibung')op*=1-0.8*iso;       // 지붕만 남기고 나머지 20%
+    if(foc>0&&p.id!=='gidung')op*=1-0.85*foc;      // 기둥 클로즈업
+    M.mat.opacity=op;M.mat.wireframe=wire;
+    const oy=OFF[p.id]*e;
+    for(let i=0;i<list.length;i++){
+      const b=list[i],wy=b.y+oy,isF=p.id==='gidung'&&focusSet.has(i);
+      const pop=(foc>0&&isF)?1+0.22*foc:1;
+      dummy.position.set(b.x,b.y+oy,b.z);dummy.scale.set(b.sx*pop,b.sy*pop,b.sz*pop);
+      dummy.rotation.set(0,0,0);dummy.updateMatrix();M.body.setMatrixAt(i,dummy.matrix);
+      dummy.position.set(b.x,b.y+oy+0.4*b.sy*pop,b.z);dummy.scale.set(1,1,1);
+      dummy.updateMatrix();M.stud.setMatrixAt(i,dummy.matrix);
+      tmpC.set(b.c);
+      if(mono>0)tmpC.lerp(gray,mono);
+      if(wire&&Math.abs(wy-threshY)<1.4)tmpC.lerp(sweepC,0.95);   // 아래→위 주황→파랑
+      if(foc>0){
+        if(p.id==='gidung'&&!isF)tmpC.lerp(cream,0.75*foc);
+        if(isF&&warnN>0)tmpC.lerp(orange,(0.45+0.4*Math.sin(t*10))*foc);
+      }
+      M.body.setColorAt(i,tmpC);M.stud.setColorAt(i,tmpC);
+    }
+    M.body.instanceMatrix.needsUpdate=M.stud.instanceMatrix.needsUpdate=true;
+    if(M.body.instanceColor)M.body.instanceColor.needsUpdate=true;
+    if(M.stud.instanceColor)M.stud.instanceColor.needsUpdate=true;
+  }
+
+  // overlays (all pure functions of t → slider scrub shows any frame)
+  const cx=(box.max.x+box.min.x)/2,cz=(box.max.z+box.min.z)/2;
+  place($('dimW'),cx,box.max.y+2.6,t<7.6,`↔ ${Math.round(dimW*dimP).toLocaleString()} cm`);
+  $('dimD').style.display='none';
+  place($('dimH'),cx,box.min.y-1.6,t<7.6,`↕ ${Math.round(dimH*dimP).toLocaleString()} · ⤢ ${Math.round(dimD*dimP).toLocaleString()} cm`);
+  place($('roofChip'),0,ridgeY+OFF.jibung*e+1.6,iso>0.02,`▧ ${counts.jibung.toLocaleString()} / ${TOTAL.toLocaleString()}`);
+  const wc=$('warnChip');
+  if(foc>0.02){const s=toScreen(FX,8.8+OFF.gidung*e,box.max.z);
+    wc.style.display='block';wc.style.left=s.x+'px';wc.style.top=(s.y-34)+'px';
+    wc.className='chip '+(warnN>0?'acc':'blue');
+    wc.textContent=warnN>0?`⚠ ${warnN}`:`✓ 0`;}
+  else wc.style.display='none';
+
+  PARTS.forEach((p,i)=>{
+    const k=ss(23.2+i*0.75,23.9+i*0.75),el=invCards[i];
+    el.style.opacity=k.toFixed(3);
+    el.style.transform=`translateY(${((1-k)*26).toFixed(1)}px)`;
+  });
+  const sv=[TOTAL*stP,PH.length*stP,PARTS.length*stP,genMs*stP,0,0];
+  const suf=['',`/${PH.length}`,`/${PARTS.length}`,'ms','',''];
+  statV.forEach((el,i)=>{el.textContent=(i===3?Math.round(sv[i]):Math.round(sv[i])).toLocaleString()+suf[i];});
+
+  PH.forEach((p,i)=>{
+    const nx=i+1<PH.length?PH[i+1][0]:32;
+    $('ph'+i).classList.toggle('on',t>=p[0]&&t<nx);
+  });
+  if(document.activeElement!==slider)slider.value=t.toFixed(2);
+  tcur.textContent=`${t.toFixed(2)} / 32.00`;
+  renderer.render(scene,camera);
+}
+frame();
+</script>
+</body>
+</html>

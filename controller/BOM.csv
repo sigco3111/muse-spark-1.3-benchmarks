@@ -1,0 +1,9 @@
+품명,규격/모델,수량,비고,공식 출처 URL
+Raspberry Pi Pico,RP2040 + Micro USB 온보드,1,메인 MCU 개발보드,https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html
+SSD1306 OLED 0.96인치,I2C 128x64 4핀 (VCC/GND/SCL/SDA),1,3.3V 동작,https://www.adafruit.com/product/326
+택트 버튼 6mm,모멘터리 4핀,3,REC/Scene1/Scene2,https://www.arduino.cc/en/Tutorial/Button
+빨간 LED 5mm,2Vf 20mA,1,실제 REC 상태 표시,https://www.sparkfun.com/products/9590
+저항 220옴,1/4W,1,LED 전류제한,https://www.digikey.com
+저항 10k옴 내장 풀업 사용,— ,0,"Pico 내부 풀업 사용, 외장 불필요",—
+Micro USB 케이블,데이터 통신용,1,전원+CDC 시리얼,https://www.raspberrypi.com/products/micro-usb-cable
+브레드보드+점퍼선,하프사이즈,1세트,무납땜 프로토타입,https://www.adafruit.com/product/64

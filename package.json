@@ -1,0 +1,10 @@
+{
+  "name": "muse-spark-1.3-benchmarks",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Muse Spark 1.3 benchmark: 5 tasks from codefactory metaprompt.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000 --bind 127.0.0.1",
+    "verify:controller": "python3 -m py_compile controller/firmware/main.py controller/host/bridge.py && python3 controller/host/bridge.py --dry-run"
+  }
+}
